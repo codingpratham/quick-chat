@@ -1,1 +1,1 @@
-making architecture of lovable type website using Gemini 
+# Making Architecture of Chat App API Using WebSocket 
