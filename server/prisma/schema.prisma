@@ -11,3 +11,45 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model User{
+  id String @id @default(uuid())
+  username String @unique
+  password String 
+  room room[]
+  members members[]
+}
+
+model room{
+  id String @id @default(uuid())
+  roomName String @unique
+
+  userId String
+  user User @relation(fields: [userId], references: [id])
+
+  conversation conversation[]
+  members members[]
+}
+
+model members{
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id])
+
+  roomId String
+  room room @relation(fields: [roomId], references: [id])
+}
+
+model conversation{
+  id String @id @default(uuid())
+  roomId String
+  room room @relation(fields: [roomId], references: [id])
+  message message[]
+}
+
+model message{
+  id String @id @default(uuid())
+  content String
+  conversationId String
+  conversation conversation @relation(fields: [conversationId], references: [id])
+}
