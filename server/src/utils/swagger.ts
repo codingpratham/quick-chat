@@ -6,9 +6,9 @@ const options: swaggerJsdoc.Options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'BobBuilder API',
+            title: 'Quick-chat API',
             version: '1.0.0',
-            description: 'REST API documentation for BobBuilder',
+            description: 'REST API documentation for Quick-chat',
         },
         components: {
             securitySchemes: {

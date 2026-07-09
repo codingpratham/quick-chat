@@ -13,7 +13,10 @@ const server = http.createServer(app)
 app.use(cookieParser())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-app.use(cors())
+app.use(cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true
+}))
 
 import { setupSwagger } from './utils/swagger.js';
 setupSwagger(app);

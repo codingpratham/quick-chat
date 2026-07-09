@@ -125,7 +125,7 @@ router.post("/rooms", authenticateToken, createRoom);
  *       401:
  *         description: Unauthorized
  */
-router.get("/rooms", authenticateToken, getRooms);
+router.get("/rooms", getRooms);
 
 /**
  * @openapi
@@ -158,7 +158,7 @@ router.get("/rooms", authenticateToken, getRooms);
  *       404:
  *         description: User or Room not found
  */
-router.post("/rooms/:roomname/invite", authenticateToken, inviteMember);
+router.post("/rooms/:roomname/invite", inviteMember);
 
 /**
  * @openapi
@@ -180,7 +180,7 @@ router.post("/rooms/:roomname/invite", authenticateToken, inviteMember);
  *       404:
  *         description: Room not found
  */
-router.get("/rooms/:roomname/members", authenticateToken, getRoomMembers);
+router.get("/rooms/:roomname/members", getRoomMembers);
 
 /**
  * @openapi
@@ -213,6 +213,6 @@ router.get("/rooms/:roomname/members", authenticateToken, getRoomMembers);
  *       404:
  *         description: User or Room not found
  */
-router.delete("/rooms/:roomname/kick", authenticateToken, kickMember);
+router.delete("/rooms/:roomname/kick", kickMember);
 
 export default router;
