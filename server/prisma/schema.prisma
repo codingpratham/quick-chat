@@ -13,11 +13,12 @@ datasource db {
 }
 
 model User{
-  id String @id @default(uuid())
-  username String @unique
+  id       String    @id @default(uuid())
+  username String    @unique
   password String 
-  room room[]
-  members members[]
+  room     room[]
+  members  members[]
+  messages message[]
 }
 
 model room{
@@ -48,8 +49,11 @@ model conversation{
 }
 
 model message{
-  id String @id @default(uuid())
-  content String
+  id             String       @id @default(uuid())
+  content        String
+  sentAt         DateTime     @default(now())
   conversationId String
-  conversation conversation @relation(fields: [conversationId], references: [id])
+  conversation   conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
 }
