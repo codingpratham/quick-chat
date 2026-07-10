@@ -22,6 +22,7 @@ interface ChatRoomProps {
   members: Member[];
   onInviteMember: (username: string) => Promise<void>;
   onKickMember: (username: string) => Promise<void>;
+  onDeleteRoom: (roomName: string) => Promise<void>;
 }
 
 export function ChatRoom({

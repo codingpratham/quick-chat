@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { register, login, logout } from "./controller/auth.controller.js";
-import { createRoom, getRooms, inviteMember, getRoomMembers, kickMember } from "./controller/room.controller.js";
+import { createRoom, getRooms, inviteMember, getRoomMembers, kickMember,deleteRoom } from "./controller/room.controller.js";
 import { authenticateToken } from "./middleware/auth.m.js";
 
 const router = Router();
@@ -214,5 +214,6 @@ router.get("/rooms/:roomname/members", authenticateToken, getRoomMembers);
  *         description: User or Room not found
  */
 router.delete("/rooms/:roomname/kick", authenticateToken, kickMember);
+router.delete("/rooms/:roomname", authenticateToken,deleteRoom)
 
 export default router;

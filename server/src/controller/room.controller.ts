@@ -179,3 +179,24 @@ export async function kickMember(req: Request, res: Response) {
         res.status(500).json({ message: 'Internal server error' });
     }
 }
+
+export async function deleteRoom(req: Request, res: Response) {
+    const roomname = typeof req.params.roomname === 'string' ? req.params.roomname : undefined;
+
+    if (!roomname) {
+        return res.status(400).json({ message: 'Room name is required' });
+    }
+
+    try {
+        const deletedRoom = await prisma.room.delete({
+            where: {
+                roomName: roomname,
+            }
+        });
+
+        res.status(200).json({ message: 'Room deleted successfully', room: deletedRoom });
+    } catch (error) {
+        console.error('Error during deleting room:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}

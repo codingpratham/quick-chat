@@ -361,6 +361,28 @@ export default function App() {
     }
   }, [activeRoomId, connectionState]);
 
+  // 10. delete room logic
+  const handleDeleteRoom = async (roomName: string) => {
+    if (!token) return;
+    const apiUrl = import.meta.env.VITE_API_URL as string;
+    const response = await fetch(`${apiUrl}/api/rooms/${encodeURIComponent(roomName)}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to delete room.');
+    }
+    await fetchRooms();
+    if (activeRoomId === data.deletedRoomId) {
+      setActiveRoomId(null);
+      setMessages([]);
+      setMembers([]);
+    }
+  };
+
   // Handle successful login/registration
   const handleAuthSuccess = (newToken: string, newUsername: string, newUserId: string) => {
     localStorage.setItem('token', newToken);
@@ -421,6 +443,7 @@ export default function App() {
           members={members}
           onInviteMember={handleInviteMember}
           onKickMember={handleKickMember}
+          onDeleteRoom={handleDeleteRoom}
         />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-950/20">
