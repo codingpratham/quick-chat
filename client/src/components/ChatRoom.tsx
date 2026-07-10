@@ -9,6 +9,7 @@ import {
   MessageSquare,
   AlertCircle,
   Clock,
+  Trash2, // Fixed: Added the missing icon import
 } from 'lucide-react';
 import type { Room, Message, Member } from '../types';
 
@@ -22,6 +23,7 @@ interface ChatRoomProps {
   members: Member[];
   onInviteMember: (username: string) => Promise<void>;
   onKickMember: (username: string) => Promise<void>;
+  onDeleteRoom: (roomName: string) => Promise<void>; // Fixed: Prop included in the type definitions
 }
 
 export function ChatRoom({
@@ -34,6 +36,7 @@ export function ChatRoom({
   members,
   onInviteMember,
   onKickMember,
+  onDeleteRoom,
 }: ChatRoomProps) {
   const [inputText, setInputText] = useState('');
   const [showMembersPanel, setShowMembersPanel] = useState(true);
@@ -89,6 +92,23 @@ export function ChatRoom({
     }
   };
 
+  const handleDeleteClick = async () => {
+    const confirmation = window.confirm(
+      `CRITICAL ACTION:\nAre you sure you want to permanently delete #${room.roomName}? This will wipe out all messages and channel history.`
+    );
+    if (!confirmation) return;
+
+    setActionLoading(true);
+    try {
+      await onDeleteRoom(room.roomName);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error('Failed to delete channel.');
+      alert(error.message || 'Failed to delete channel.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const isOwner = room.userId === currentUserId;
 
   // Render Join Channel Screen if user is not a member
@@ -125,17 +145,32 @@ export function ChatRoom({
             <Hash className="w-5 h-5 text-slate-500 shrink-0" />
             <span className="font-bold text-slate-200 truncate">{room.roomName}</span>
           </div>
-          <button
-            onClick={() => setShowMembersPanel(!showMembersPanel)}
-            className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-xs font-semibold ${
-              showMembersPanel
-                ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>{members.length} Members</span>
-          </button>
+          
+          <div className="flex items-center gap-3">
+            {isOwner && (
+              <button
+                onClick={handleDeleteClick}
+                disabled={actionLoading}
+                className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer flex items-center gap-2 text-xs font-semibold disabled:opacity-50"
+                title="Delete Channel permanently"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Delete Channel</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setShowMembersPanel(!showMembersPanel)}
+              className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-xs font-semibold ${
+                showMembersPanel
+                  ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>{members.length} Members</span>
+            </button>
+          </div>
         </div>
 
         {/* Messages List */}
@@ -181,8 +216,8 @@ export function ChatRoom({
                     </div>
                   )}
                   
-                  {/* Bubble Container */}
-                  <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                  {/* Fixed: Bubble Container Alignment Logic */}
+                  <div className={`flex flex-col flex-1 max-w-full ${isMe ? 'items-end' : 'items-start'}`}>
                     {/* Sender Name (only if not me) */}
                     {!isMe && (
                       <span className="text-xs text-slate-400 font-medium ml-1 mb-1">
@@ -280,7 +315,6 @@ export function ChatRoom({
 
           {/* Members List */}
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
-            {/* Owner Details */}
             <div className="px-2 py-1 mb-1">
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                 Creator {members.find((m) => m.userId === room.userId)?.user.username && `(${members.find((m) => m.userId === room.userId)?.user.username})`}
@@ -335,7 +369,6 @@ export function ChatRoom({
                       </span>
                     </div>
 
-                    {/* Show Kick button if I am the owner */}
                     {isOwner && (
                       <button
                         onClick={() => handleKick(member.user.username)}
