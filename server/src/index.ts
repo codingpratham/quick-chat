@@ -13,8 +13,12 @@ const server = http.createServer(app)
 app.use(cookieParser())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+const clientOrigin = process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.replace(/\/+$/, '') // Remove trailing slash if present
+    : 'http://localhost:5173';
+
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: clientOrigin,
     credentials: true
 }))
 
