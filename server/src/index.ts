@@ -47,6 +47,7 @@ server.on("error", (error: NodeJS.ErrnoException) => {
 });
 
 server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
-    console.log(`WebSocket ready on ws://localhost:${port}`);
+    console.log(`Server running on port ${port}`);
+    console.log(`Client origin for CORS: ${clientOrigin}`);
+    console.log(`WebSocket server initialized.`);
 })

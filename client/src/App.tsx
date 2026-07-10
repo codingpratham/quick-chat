@@ -197,10 +197,8 @@ export default function App() {
 
     setConnectionState('connecting');
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname;
-    const port = window.location.port === '5173' ? '5000' : window.location.port;
-    const wsUrl = `${protocol}//${host}${port ? `:${port}` : ''}`;
+    
+    const wsUrl = `${import.meta.env.VITE_API_URL?.replace(/^http/, 'ws')}/ws`;
 
     console.log('Connecting to WebSocket:', wsUrl);
     const ws = new WebSocket(wsUrl);
