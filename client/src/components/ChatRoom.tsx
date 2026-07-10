@@ -9,6 +9,7 @@ import {
   MessageSquare,
   AlertCircle,
   Clock,
+  Trash2, // Added for Delete Room UI
 } from 'lucide-react';
 import type { Room, Message, Member } from '../types';
 
@@ -22,6 +23,7 @@ interface ChatRoomProps {
   members: Member[];
   onInviteMember: (username: string) => Promise<void>;
   onKickMember: (username: string) => Promise<void>;
+  onDeleteRoom: (roomName: string) => Promise<void>; // Wired prop
 }
 
 export function ChatRoom({
@@ -34,6 +36,7 @@ export function ChatRoom({
   members,
   onInviteMember,
   onKickMember,
+  onDeleteRoom, // Destructured prop
 }: ChatRoomProps) {
   const [inputText, setInputText] = useState('');
   const [showMembersPanel, setShowMembersPanel] = useState(true);
@@ -89,6 +92,24 @@ export function ChatRoom({
     }
   };
 
+  // Delete Room Action Handler
+  const handleDeleteClick = async () => {
+    const confirmation = window.confirm(
+      `CRITICAL ACTION:\nAre you sure you want to permanently delete #${room.roomName}? This will wipe out all messages and channel history.`
+    );
+    if (!confirmation) return;
+
+    setActionLoading(true);
+    try {
+      await onDeleteRoom(room.roomName);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error('Failed to delete channel.');
+      alert(error.message || 'Failed to delete channel.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const isOwner = room.userId === currentUserId;
 
   // Render Join Channel Screen if user is not a member
@@ -125,17 +146,33 @@ export function ChatRoom({
             <Hash className="w-5 h-5 text-slate-500 shrink-0" />
             <span className="font-bold text-slate-200 truncate">{room.roomName}</span>
           </div>
-          <button
-            onClick={() => setShowMembersPanel(!showMembersPanel)}
-            className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-xs font-semibold ${
-              showMembersPanel
-                ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>{members.length} Members</span>
-          </button>
+          
+          <div className="flex items-center gap-3">
+            {/* Conditional Delete Button: Visible only to Room Creator */}
+            {isOwner && (
+              <button
+                onClick={handleDeleteClick}
+                disabled={actionLoading}
+                className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer flex items-center gap-2 text-xs font-semibold disabled:opacity-50"
+                title="Delete Channel permanently"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Delete Channel</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setShowMembersPanel(!showMembersPanel)}
+              className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-xs font-semibold ${
+                showMembersPanel
+                  ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>{members.length} Members</span>
+            </button>
+          </div>
         </div>
 
         {/* Messages List */}
@@ -182,7 +219,7 @@ export function ChatRoom({
                   )}
                   
                   {/* Bubble Container */}
-                  <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                  <div className="flex flex-col flex-1 max-w-full">
                     {/* Sender Name (only if not me) */}
                     {!isMe && (
                       <span className="text-xs text-slate-400 font-medium ml-1 mb-1">
