@@ -283,7 +283,7 @@ export function ChatRoom({
             {/* Owner Details */}
             <div className="px-2 py-1 mb-1">
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                Creator
+                Creator {members.find((m) => m.userId === room.userId)?.user.username && `(${members.find((m) => m.userId === room.userId)?.user.username})`}
               </span>
             </div>
 

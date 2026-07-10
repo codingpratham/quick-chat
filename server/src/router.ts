@@ -158,7 +158,7 @@ router.get("/rooms", getRooms);
  *       404:
  *         description: User or Room not found
  */
-router.post("/rooms/:roomname/invite", inviteMember);
+router.post("/rooms/:roomname/invite", authenticateToken, inviteMember);
 
 /**
  * @openapi
@@ -180,7 +180,7 @@ router.post("/rooms/:roomname/invite", inviteMember);
  *       404:
  *         description: Room not found
  */
-router.get("/rooms/:roomname/members", getRoomMembers);
+router.get("/rooms/:roomname/members", authenticateToken, getRoomMembers);
 
 /**
  * @openapi
@@ -213,6 +213,6 @@ router.get("/rooms/:roomname/members", getRoomMembers);
  *       404:
  *         description: User or Room not found
  */
-router.delete("/rooms/:roomname/kick", kickMember);
+router.delete("/rooms/:roomname/kick", authenticateToken, kickMember);
 
 export default router;

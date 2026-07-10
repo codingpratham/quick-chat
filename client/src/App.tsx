@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AuthCard } from './components/AuthCard';
 import { Sidebar } from './components/Sidebar';
 import { ChatRoom } from './components/ChatRoom';
@@ -20,17 +20,22 @@ export default function App() {
 
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const activeRoomIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    activeRoomIdRef.current = activeRoomId;
+  }, [activeRoomId]);
 
   // Computed active room object
   const activeRoom = rooms.find((r) => r.id === activeRoomId) || null;
 
-  // 1. Fetch rooms list (only if authenticated)
-  const fetchRooms = async () => {
+  // 1. Fetch rooms list
+  const fetchRooms = useCallback(async () => {
     if (!token) return;
     try {
       const response = await fetch('http://localhost:5000/api/rooms', {
         headers: {
-          'Authorization': `Bearer ${token}`, // Fallback header
+          'Authorization': `Bearer ${token}`,
         },
       });
       const data = await response.json();
@@ -40,10 +45,10 @@ export default function App() {
     } catch (err) {
       console.error('Failed to fetch rooms:', err);
     }
-  };
+  }, [token]);
 
   // 2. Fetch members list for active room
-  const fetchMembers = async (roomName: string) => {
+  const fetchMembers = useCallback(async (roomName: string) => {
     if (!token) return;
     try {
       const response = await fetch(`http://localhost:5000/api/rooms/${encodeURIComponent(roomName)}/members`, {
@@ -58,7 +63,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to fetch members:', err);
     }
-  };
+  }, [token]);
 
   // 3. Invite member
   const handleInviteMember = async (targetUsername: string) => {
@@ -75,7 +80,6 @@ export default function App() {
     if (!response.ok) {
       throw new Error(data.message || 'Invitation failed.');
     }
-    // Refresh members list
     await fetchMembers(activeRoom.roomName);
   };
 
@@ -94,7 +98,6 @@ export default function App() {
     if (!response.ok) {
       throw new Error(data.message || 'Kick failed.');
     }
-    // Refresh members list
     await fetchMembers(activeRoom.roomName);
   };
 
@@ -115,8 +118,13 @@ export default function App() {
         throw new Error(data.message || 'Failed to join room.');
       }
       
-      // Clear error and join WS
+      // Clear the restriction error state immediately
       setNotMemberError(null);
+      
+      // Update sidebar room permissions/states
+      await fetchRooms();
+      
+      // Re-trigger WebSocket authorization for the newly joined room
       if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
         socketRef.current.send(
           JSON.stringify({
@@ -146,28 +154,43 @@ export default function App() {
     if (!response.ok) {
       throw new Error(data.message || 'Failed to create room.');
     }
-    // Refresh list and select room
     await fetchRooms();
     if (data.room) {
       setActiveRoomId(data.room.id);
     }
   };
 
+  // Logout routine
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch('http://localhost:5000/api/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('Error hitting logout route:', e);
+    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('userId');
+    setToken(null);
+    setUsername(null);
+    setUserId(null);
+  }, []);
+
   // 7. WebSocket setup & listeners
-  const connectWebSocket = () => {
+  const connectWebSocket = useCallback(function connectWebSocketFn() {
     if (!token) return;
     
-    // Clear any existing reconnect timer
+    if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
     }
 
     setConnectionState('connecting');
 
-    // Dynamic WS url
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname;
-    // In dev, Vite is on 5173, backend on 5000. In prod, they might run together.
     const port = window.location.port === '5173' ? '5000' : window.location.port;
     const wsUrl = `${protocol}//${host}${port ? `:${port}` : ''}`;
 
@@ -186,24 +209,17 @@ export default function App() {
 
         switch (type) {
           case 'connected':
-            // Authenticate immediately after connecting
-            ws.send(
-              JSON.stringify({
-                type: 'auth',
-                payload: { token },
-              })
-            );
+            ws.send(JSON.stringify({ type: 'auth', payload: { token } }));
             break;
 
           case 'auth-success':
             console.log('WS Authenticated successfully');
             setConnectionState('connected');
-            // If we have an active room already, join it on reconnect
-            if (activeRoomId) {
+            if (activeRoomIdRef.current) {
               ws.send(
                 JSON.stringify({
                   type: 'join-room',
-                  payload: { roomId: activeRoomId },
+                  payload: { roomId: activeRoomIdRef.current },
                 })
               );
             }
@@ -216,9 +232,8 @@ export default function App() {
 
           case 'room-joined':
             setNotMemberError(null);
-            console.log(`Successfully joined room: ${data.roomName}`);
-            // Fetch the updated members list
             fetchMembers(data.roomName);
+            fetchRooms();
             break;
 
           case 'room-history':
@@ -241,10 +256,7 @@ export default function App() {
                 sender: { id: '', username: '' },
               },
             ]);
-            // Refresh members list to show the new person
-            if (activeRoom) {
-              fetchMembers(activeRoom.roomName);
-            }
+            if (data.roomName) fetchMembers(data.roomName);
             break;
 
           case 'user-left':
@@ -259,16 +271,17 @@ export default function App() {
                 sender: { id: '', username: '' },
               },
             ]);
-            // Refresh members list
-            if (activeRoom) {
-              fetchMembers(activeRoom.roomName);
-            }
+            if (data.roomName) fetchMembers(data.roomName);
             break;
 
           case 'error':
             console.error('WS Error:', data?.message);
             if (data?.message?.includes('not a member')) {
+              // FIX: Retain room selection context so ChatRoom can display the join screen instead of deselecting the view
               setNotMemberError(data.message);
+              setMessages([]);
+              setMembers([]);
+              fetchRooms();
             }
             break;
 
@@ -284,11 +297,14 @@ export default function App() {
       console.log('WS Connection closed');
       setConnectionState('disconnected');
       
-      // Auto-reconnect if authenticated
       if (token) {
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connectWebSocket();
-        }, 3000);
+        if (!reconnectTimeoutRef.current) {
+          reconnectTimeoutRef.current = window.setTimeout(() => {
+            console.log('Attempting to reconnect WebSocket...');
+            reconnectTimeoutRef.current = null; 
+            connectWebSocketFn();
+          }, 3000);
+        }
       }
     };
 
@@ -296,29 +312,21 @@ export default function App() {
       console.error('WS error details:', err);
       ws.close();
     };
-  };
+  }, [token, fetchMembers, fetchRooms, handleLogout]);
 
-  // 8. Trigger connection when token changes
+  // 8. Dynamic setup on mount/token change
   useEffect(() => {
     if (token) {
-      const initializeConnection = async () => {
-        await fetchRooms();
-        connectWebSocket();
-      };
-      initializeConnection();
+      fetchRooms();
+      connectWebSocket();
     } else {
-      // Disconnect WS if logged out
       if (socketRef.current) {
         socketRef.current.close();
       }
-      // Defer state resets to avoid synchronous setState inside effect
-      // which can cause cascading renders
-      setTimeout(() => {
-        setRooms([]);
-        setActiveRoomId(null);
-        setMessages([]);
-        setMembers([]);
-      }, 0);
+      setRooms([]);
+      setActiveRoomId(null);
+      setMessages([]);
+      setMembers([]);
     }
 
     return () => {
@@ -329,11 +337,11 @@ export default function App() {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [token]);
+  }, [token, fetchRooms, connectWebSocket]);
 
-  // 9. Join room over WebSocket when active room selection changes
+  // 9. Join room message logic on active room swap
   useEffect(() => {
-    if (activeRoomId && socketRef.current && connectionState === 'connected') {
+    if (activeRoomId && socketRef.current && socketRef.current.readyState === WebSocket.OPEN && connectionState === 'connected') {
       setMessages([]);
       setMembers([]);
       setNotMemberError(null);
@@ -357,21 +365,6 @@ export default function App() {
     setUserId(newUserId);
   };
 
-  // Logout routine
-  const handleLogout = async () => {
-    try {
-      await fetch('http://localhost:5000/api/logout', { method: 'POST' });
-    } catch (e) {
-      console.error('Error hitting logout route:', e);
-    }
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    localStorage.removeItem('userId');
-    setToken(null);
-    setUsername(null);
-    setUserId(null);
-  };
-
   // Send message over WebSocket
   const handleSendMessage = (content: string) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN && activeRoomId) {
@@ -388,7 +381,6 @@ export default function App() {
   if (!token || !username) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-950 p-4 relative overflow-hidden">
-        {/* Futuristic background blobs */}
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-violet-600/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[120px]" />
         <AuthCard onAuthSuccess={handleAuthSuccess} />
@@ -398,11 +390,9 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen bg-slate-950 overflow-hidden text-slate-100 relative">
-      {/* Background blobs for main workspace too */}
       <div className="absolute top-[20%] left-[10%] w-[30%] h-[30%] bg-violet-600/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[20%] right-[10%] w-[30%] h-[30%] bg-indigo-600/5 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Sidebar Navigation */}
       <Sidebar
         username={username}
         rooms={rooms}
@@ -413,14 +403,12 @@ export default function App() {
         connectionState={connectionState}
       />
 
-      {/* Active Conversation / Placeholder */}
       {activeRoom ? (
         <ChatRoom
           key={activeRoom.id}
           room={activeRoom}
           messages={messages}
           currentUserId={userId || ''}
-
           onSendMessage={handleSendMessage}
           notMemberError={notMemberError}
           onJoinRoomSelf={handleJoinRoomSelf}
