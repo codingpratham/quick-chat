@@ -30,7 +30,8 @@ export function AuthCard({ onAuthSuccess }: AuthCardProps) {
     }
 
     setLoading(true);
-    const endpoint = isLogin ? 'http://localhost:5000/api/login' : 'http://localhost:5000/api/register';
+    const apiUrl = import.meta.env.VITE_API_URL as string;
+    const endpoint = isLogin ? `${apiUrl}/api/login` : `${apiUrl}/api/register`;
 
     try {
       const response = await fetch(endpoint, {

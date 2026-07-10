@@ -29,11 +29,13 @@ export default function App() {
   // Computed active room object
   const activeRoom = rooms.find((r) => r.id === activeRoomId) || null;
 
+      const apiUrl = import.meta.env.VITE_API_URL as string;
+
   // 1. Fetch rooms list
   const fetchRooms = useCallback(async () => {
     if (!token) return;
     try {
-      const response = await fetch('http://localhost:5000/api/rooms', {
+      const response = await fetch(`${apiUrl}/api/rooms`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -51,7 +53,8 @@ export default function App() {
   const fetchMembers = useCallback(async (roomName: string) => {
     if (!token) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/rooms/${encodeURIComponent(roomName)}/members`, {
+      const apiUrl = import.meta.env.VITE_API_URL as string;
+      const response = await fetch(`${apiUrl}/api/rooms/${encodeURIComponent(roomName)}/members`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -68,7 +71,8 @@ export default function App() {
   // 3. Invite member
   const handleInviteMember = async (targetUsername: string) => {
     if (!activeRoom || !token) return;
-    const response = await fetch(`http://localhost:5000/api/rooms/${encodeURIComponent(activeRoom.roomName)}/invite`, {
+    const apiUrl = import.meta.env.VITE_API_URL as string;
+    const response = await fetch(`${apiUrl}/api/rooms/${encodeURIComponent(activeRoom.roomName)}/invite`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -86,7 +90,8 @@ export default function App() {
   // 4. Kick member
   const handleKickMember = async (targetUsername: string) => {
     if (!activeRoom || !token) return;
-    const response = await fetch(`http://localhost:5000/api/rooms/${encodeURIComponent(activeRoom.roomName)}/kick`, {
+    const apiUrl = import.meta.env.VITE_API_URL as string;
+    const response = await fetch(`${apiUrl}/api/rooms/${encodeURIComponent(activeRoom.roomName)}/kick`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -105,7 +110,8 @@ export default function App() {
   const handleJoinRoomSelf = async () => {
     if (!activeRoom || !username || !token) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/rooms/${encodeURIComponent(activeRoom.roomName)}/invite`, {
+      const apiUrl = import.meta.env.VITE_API_URL as string;
+      const response = await fetch(`${apiUrl}/api/rooms/${encodeURIComponent(activeRoom.roomName)}/invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +148,8 @@ export default function App() {
   // 6. Create Room
   const handleCreateRoom = async (roomName: string) => {
     if (!token) return;
-    const response = await fetch('http://localhost:5000/api/rooms', {
+    const apiUrl = import.meta.env.VITE_API_URL as string;
+    const response = await fetch(`${apiUrl}/api/rooms`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -162,8 +169,9 @@ export default function App() {
 
   // Logout routine
   const handleLogout = useCallback(async () => {
+    const apiUrl = import.meta.env.VITE_API_URL as string;
     try {
-      await fetch('http://localhost:5000/api/logout', { method: 'POST' });
+      await fetch(`${apiUrl}/api/logout`, { method: 'POST' });
     } catch (e) {
       console.error('Error hitting logout route:', e);
     }
