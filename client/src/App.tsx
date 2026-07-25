@@ -384,6 +384,36 @@ export default function App() {
     }
   };
 
+  const handleDeleteRoom = async (roomId: string) => {
+    if (!token) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL as string;
+      const response = await fetch(`${apiUrl}/api/rooms/${encodeURIComponent(roomId)}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete room.');
+      }
+
+      setRooms((prev) => prev.filter((room) => room.id !== roomId));
+      setActiveRoomId((currentRoomId) => (currentRoomId === roomId ? null : currentRoomId));
+      if (activeRoomId === roomId) {
+        setMessages([]);
+        setMembers([]);
+        setNotMemberError(null);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete room.';
+      alert(message);
+    }
+  };
+
   // Render View
   if (!token || !username) {
     return (
@@ -422,6 +452,7 @@ export default function App() {
           members={members}
           onInviteMember={handleInviteMember}
           onKickMember={handleKickMember}
+          onDeleteRoom={handleDeleteRoom}
         />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-950/20">
